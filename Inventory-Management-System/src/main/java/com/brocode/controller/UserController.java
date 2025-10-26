@@ -18,7 +18,7 @@ import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/pms/api/users")
+@RequestMapping("/inventory/api/users")
 public class UserController {
     private final UserService service;
 
