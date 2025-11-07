@@ -1,5 +1,7 @@
 package com.example.inventory.service
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -7,6 +9,7 @@ class AuthRepository(
     private val tokenManager: TokenManager
 ) {
 
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun login(username: String, password: String): Result<String> {
         return withContext(Dispatchers.IO) {
             try {

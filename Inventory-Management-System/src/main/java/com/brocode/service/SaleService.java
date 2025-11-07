@@ -1,8 +1,10 @@
 package com.brocode.service;
 
 import com.brocode.entity.ActivityLog;
+import com.brocode.entity.Product;
 import com.brocode.entity.Sale;
 import com.brocode.repo.ActivityLogRepo;
+import com.brocode.repo.ProductRepo;
 import com.brocode.repo.SalesRepo;
 import com.brocode.service.dto.SaleCreateDto;
 import com.brocode.service.dto.SaleItemCreateDto;
@@ -22,13 +24,14 @@ public class SaleService {
     private final SalesRepo repo;
     private final ActivityLogRepo logRepo;
     private final SaleItemsService saleItemsService;
+    private final ProductRepo productRepo;
 
     public Sale getSaleOrThrowError(Long id){
         return repo.findById(id).orElseThrow(() -> new NoSuchElementException("Category Not Found"));
     }
 
     private void createSaleItems(List<SaleItemCreateDto> items, Sale sale){
-        items.forEach(item -> saleItemsService.createOrderItems(item, sale));
+        items.forEach(item -> saleItemsService.createSaleItems(item, sale));
     }
 
     public List<SaleResponseDto> getAll(){
@@ -52,6 +55,7 @@ public class SaleService {
     @Transactional
     public void delete(Long id){
         Sale sale = getSaleOrThrowError(id);
+        repo.delete(sale);
         createLog(sale, Activity.DELETE);
     }
     @Transactional

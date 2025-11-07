@@ -63,6 +63,9 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.security.crypto)
 
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation(libs.androidx.compose.foundation)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

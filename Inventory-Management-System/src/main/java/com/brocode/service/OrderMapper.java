@@ -4,10 +4,12 @@ import com.brocode.entity.Order;
 import com.brocode.entity.Supplier;
 import com.brocode.repo.SupplierRepo;
 import com.brocode.service.dto.OrderCreateDto;
+import com.brocode.service.dto.OrderItemResponseDto;
 import com.brocode.service.dto.OrderResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 
 @Service
@@ -17,12 +19,15 @@ public class OrderMapper {
     private final SupplierRepo supplierRepo;
 
     public OrderResponseDto orderToResponse(Order order) {
+        List<OrderItemResponseDto> items = null;
+
+        if (order.getItems() != null) items = order.getItems().stream().map(itemMapper::orderItemToResponse).toList();
         return new OrderResponseDto(
                 order.getId(),
                 order.getSupplier().getId(),
                 order.getOrderId(),
                 order.getOrderDate(),
-                order.getItems().stream().map(itemMapper::orderItemToResponse).toList(),
+                items,
                 order.getTotalAmount(),
                 order.getCreatedAt(),
                 order.getLastModifiedAt(),

@@ -6,14 +6,14 @@ data class LoginResponse(
 
 data class UserResponseDto(
     val username: String,
-    val roles: String? = null,
+    val roles: List<String>? = null,
     val enabled: Boolean? = null,
 ): BaseResponseDto()
 
 data class UserCreateDto(
     val username: String,
-    val password: String,
-    val role: String? = null
+    val password: String?,
+    val roles: List<String> = emptyList()
 )
 
 data class UserEditDto(

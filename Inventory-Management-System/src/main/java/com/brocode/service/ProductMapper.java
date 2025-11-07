@@ -26,7 +26,7 @@ public class ProductMapper {
                 product.getPrice(),
                 product.getInStock(),
                 product.getWarningStockLevel(),
-                product.getWarningStockLevel() > product.getInStock(),
+                product.getWarningStockLevel() >= product.getInStock(),
                 product.getUnit(),
                 product.getCreatedAt(),
                 product.getLastModifiedAt(),

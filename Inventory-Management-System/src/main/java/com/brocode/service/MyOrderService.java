@@ -1,6 +1,7 @@
 package com.brocode.service;
 
 import com.brocode.entity.ActivityLog;
+import com.brocode.entity.Batch;
 import com.brocode.entity.Order;
 import com.brocode.repo.ActivityLogRepo;
 import com.brocode.repo.OrderRepo;
@@ -8,6 +9,7 @@ import com.brocode.service.dto.OrderCreateDto;
 import com.brocode.service.dto.OrderItemCreateDto;
 import com.brocode.service.dto.OrderResponseDto;
 import com.brocode.utils.Activity;
+import com.brocode.utils.IdGenerator;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class MyOrderService {
     private final OrderRepo repo;
     private final ActivityLogRepo logRepo;
     private final OrderItemsService orderItemsService;
+    private final BatchService batchService;
 
     public Order getOrderOrThrowError(Long id){
         return repo.findById(id).orElseThrow(() -> new NoSuchElementException("Order Not Found"));
@@ -29,6 +32,13 @@ public class MyOrderService {
 
     private void createOrderItems(List<OrderItemCreateDto> items, Order order){
         items.forEach(item -> orderItemsService.createOrderItems(item, order));
+    }
+
+    private void createOrderBatches(List<OrderItemCreateDto> items, Order order){
+        items.forEach(item -> {
+
+            batchService.createBatch(item, order);
+        });
     }
 
     public List<OrderResponseDto> getAll(){
@@ -42,11 +52,15 @@ public class MyOrderService {
     @Transactional
     public OrderResponseDto createOrder(OrderCreateDto dto){
         Order order = repo.save(mapper.createToOrder(dto));
+        order.setOrderId(IdGenerator.generateOrderId(order));
 
-        if (dto.items() != null) createOrderItems(dto.items(), order);
+        if (dto.items() != null) {
+            createOrderItems(dto.items(), order);
+            createOrderBatches(dto.items(), order);
+        };
 
         createLog(order, Activity.CREATE);
-        return mapper.orderToResponse(order);
+        return mapper.orderToResponse(repo.save(order));
     }
 
     @Transactional

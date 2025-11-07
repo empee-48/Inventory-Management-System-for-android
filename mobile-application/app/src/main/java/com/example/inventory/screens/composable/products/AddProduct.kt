@@ -1,0 +1,493 @@
+package com.example.inventory.screens.composable.products
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Money
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.example.inventory.data.CategoryResponseDto
+import com.example.inventory.data.ProductCreateDto
+import com.example.inventory.service.api.CategoryApiService
+import com.example.inventory.service.api.ProductApiService
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddProductScreen(
+    onBack: () -> Unit,
+    onSave: (ProductCreateDto) -> Unit,
+    categoryApiService: CategoryApiService,
+    productApiService: ProductApiService
+) {
+    var categories by remember { mutableStateOf<List<CategoryResponseDto>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var submitError by remember { mutableStateOf<String?>(null) }
+
+    // Form state
+    var selectedCategory by remember { mutableStateOf<CategoryResponseDto?>(null) }
+    var productName by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("") }
+    var inStock by remember { mutableStateOf("") }
+    var warningStockLevel by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("") }
+
+    val coroutineScope = rememberCoroutineScope()
+
+    // Form validation
+    val isFormValid = selectedCategory != null &&
+            productName.isNotBlank() &&
+            price.isNotBlank() &&
+            inStock.isNotBlank() &&
+            warningStockLevel.isNotBlank() &&
+            unit.isNotBlank()
+
+    // Load categories only once on startup
+    LaunchedEffect(Unit) {
+        try {
+            val response = categoryApiService.getCategories()
+            if (response.isSuccessful) {
+                categories = response.body() ?: emptyList()
+            } else {
+                errorMessage = "Failed to load categories: ${response.code()}"
+            }
+        } catch (e: Exception) {
+            errorMessage = "Network error: ${e.message}"
+        } finally {
+            isLoading = false
+        }
+    }
+
+    // Handle product creation
+    val handleSave = {
+        if (isFormValid && !isSubmitting) {
+            isSubmitting = true
+            submitError = null
+
+            coroutineScope.launch {
+                try {
+                    val productCreateDto = ProductCreateDto(
+                        categoryId = selectedCategory!!.id!!,
+                        name = productName,
+                        description = description,
+                        price = price.toDouble(),
+                        inStock = inStock.toDouble(),
+                        warningStockLevel = warningStockLevel.toDouble(),
+                        unit = unit
+                    )
+
+                    val response = productApiService.createProduct(productCreateDto)
+
+                    if (response.isSuccessful) {
+                        onSave(productCreateDto)
+                    } else {
+                        submitError = "Failed to create product: ${response.code()} - ${response.message()}"
+                    }
+                } catch (e: Exception) {
+                    submitError = "Network error: ${e.message}"
+                } finally {
+                    isSubmitting = false
+                }
+            }
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Add New Product",
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(40.dp),
+                        enabled = !isSubmitting
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                },
+                actions = {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(8.dp)
+                        )
+                    } else {
+                        IconButton(
+                            onClick = handleSave,
+                            enabled = isFormValid && !isSubmitting
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Save",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Submit Error Banner
+            submitError?.let { error ->
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Error",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = "Loading categories...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else if (errorMessage != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Error",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Text(
+                            text = "Failed to Load Categories",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = errorMessage!!,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                        Button(
+                            onClick = {
+                                isLoading = true
+                                errorMessage = null
+                                coroutineScope.launch {
+                                    try {
+                                        val response = categoryApiService.getCategories()
+                                        if (response.isSuccessful) {
+                                            categories = response.body() ?: emptyList()
+                                        } else {
+                                            errorMessage = "Failed to load categories: ${response.code()}"
+                                        }
+                                    } catch (e: Exception) {
+                                        errorMessage = "Network error: ${e.message}"
+                                    } finally {
+                                        isLoading = false
+                                    }
+                                }
+                            },
+                            enabled = !isSubmitting
+                        ) {
+                            Text("Retry")
+                        }
+                    }
+                }
+            } else {
+                // Form Content
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    Text(
+                        text = "Product Information",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    // Category Selection
+                    CategoryDropdown(
+                        categories = categories,
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = { selectedCategory = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSubmitting
+                    )
+
+                    // Product Name
+                    OutlinedTextField(
+                        value = productName,
+                        onValueChange = { productName = it },
+                        label = { Text("Product Name *") },
+                        placeholder = { Text("Enter product name") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Inventory2, "Product Name")
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = productName.isBlank() && productName.isNotEmpty(),
+                        enabled = !isSubmitting
+                    )
+
+                    // Description
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Description") },
+                        placeholder = { Text("Enter product description (optional)") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Description, "Description")
+                        },
+                        singleLine = false,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        maxLines = 4,
+                        enabled = !isSubmitting
+                    )
+
+                    // Price
+                    OutlinedTextField(
+                        value = price,
+                        onValueChange = { newValue ->
+                            if (newValue.isEmpty() || newValue.toDoubleOrNull() != null) {
+                                price = newValue
+                            }
+                        },
+                        label = { Text("Price *") },
+                        placeholder = { Text("0.00") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Money, "Price")
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = price.isBlank() && price.isNotEmpty(),
+                        enabled = !isSubmitting
+                    )
+
+                    // Current Stock
+                    OutlinedTextField(
+                        value = inStock,
+                        onValueChange = { newValue ->
+                            if (newValue.isEmpty() || newValue.toDoubleOrNull() != null) {
+                                inStock = newValue
+                            }
+                        },
+                        label = { Text("Current Stock *") },
+                        placeholder = { Text("0") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Inventory2, "Current Stock")
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = inStock.isBlank() && inStock.isNotEmpty(),
+                        enabled = !isSubmitting
+                    )
+
+                    // Warning Stock Level
+                    OutlinedTextField(
+                        value = warningStockLevel,
+                        onValueChange = { newValue ->
+                            if (newValue.isEmpty() || newValue.toDoubleOrNull() != null) {
+                                warningStockLevel = newValue
+                            }
+                        },
+                        label = { Text("Warning Stock Level *") },
+                        placeholder = { Text("0") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Warning, "Warning Level")
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = warningStockLevel.isBlank() && warningStockLevel.isNotEmpty(),
+                        enabled = !isSubmitting
+                    )
+
+                    // Unit
+                    OutlinedTextField(
+                        value = unit,
+                        onValueChange = { unit = it },
+                        label = { Text("Unit *") },
+                        placeholder = { Text("pcs, kg, units, etc.") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Inventory2, "Unit")
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = unit.isBlank() && unit.isNotEmpty(),
+                        enabled = !isSubmitting
+                    )
+
+                    // Validation Message
+                    if (!isFormValid && (
+                                productName.isNotBlank() ||
+                                        price.isNotBlank() ||
+                                        inStock.isNotBlank() ||
+                                        warningStockLevel.isNotBlank() ||
+                                        unit.isNotBlank()
+                                )) {
+                        Text(
+                            text = "Please fill in all required fields (*)",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
+
+                    // Form Helper Text
+                    Text(
+                        text = "* Required fields",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryDropdown(
+    categories: List<CategoryResponseDto>,
+    selectedCategory: CategoryResponseDto?,
+    onCategorySelected: (CategoryResponseDto) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (enabled) expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = selectedCategory?.name ?: "",
+            onValueChange = { },
+            label = { Text("Category *") },
+            placeholder = { Text("Select a category") },
+            leadingIcon = {
+                Icon(Icons.Default.Category, "Category")
+            },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            readOnly = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+            isError = selectedCategory == null && categories.isNotEmpty(),
+            enabled = enabled
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            if (categories.isEmpty()) {
+                DropdownMenuItem(
+                    text = {
+                        Text("No categories available")
+                    },
+                    onClick = { expanded = false }
+                )
+            } else {
+                categories.forEach { category ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = category.name ?: "Unnamed Category",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        onClick = {
+                            onCategorySelected(category)
+                            expanded = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}

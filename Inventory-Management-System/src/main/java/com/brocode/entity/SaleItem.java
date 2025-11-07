@@ -16,11 +16,16 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true)
 public class SaleItem extends BaseEntity{
+
     @ManyToOne
     @JoinColumn(name = "product_id")
     private Product product;
 
     private Double amount;
+
+    @ManyToOne
+    @JoinColumn(name = "batch_id")
+    private Batch batch;
 
     @ManyToOne
     @JoinColumn(name = "sale_id")

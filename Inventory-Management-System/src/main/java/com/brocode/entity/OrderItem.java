@@ -14,6 +14,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true)
 public class OrderItem extends BaseEntity{
+
     @ManyToOne
     @JoinColumn(name = "product_id")
     private Product product;

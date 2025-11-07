@@ -1,10 +1,8 @@
 package com.brocode.service;
 
-import com.brocode.entity.Product;
-import com.brocode.entity.Sale;
-import com.brocode.entity.SaleItem;
+import com.brocode.entity.*;
+import com.brocode.repo.BatchRepo;
 import com.brocode.repo.ProductRepo;
-import com.brocode.repo.SalesRepo;
 import com.brocode.service.dto.SaleItemCreateDto;
 import com.brocode.service.dto.SaleItemResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -16,11 +14,13 @@ import java.util.NoSuchElementException;
 @RequiredArgsConstructor
 public class SaleItemMapper {
     private final ProductRepo productRepo;
+    private final BatchRepo batchRepo;
 
     public SaleItemResponseDto saleItemToResponse(SaleItem saleItem) {
         return new SaleItemResponseDto(
                 saleItem.getId(),
                 saleItem.getProduct().getId(),
+                saleItem.getBatch().getId(),
                 saleItem.getSale().getId(),
                 saleItem.getProduct().getName(),
                 saleItem.getAmount(),
@@ -34,11 +34,13 @@ public class SaleItemMapper {
 
     public SaleItem createToSaleItem(SaleItemCreateDto dto, Sale sale) {
         Product product = productRepo.findById(dto.productId()).orElseThrow(() -> new NoSuchElementException("Product Not Found"));
+        Batch batch = batchRepo.findById(dto.batchId()).orElseThrow(() -> new NoSuchElementException("Batch Not Found"));
 
         return SaleItem.builder()
                 .amount(dto.amount())
                 .salePrice(dto.price())
                 .sale(sale)
+                .batch(batch)
                 .product(product)
                 .build();
     }

@@ -8,7 +8,7 @@ data class ErrorResponseDto(
 )
 
 open class BaseResponseDto(
-    open val id: Long? = null,
+    open val id: Long = 0,
     open val createdAt: LocalDateTime? = null,
     open val lastModifiedAt: LocalDateTime? = null,
     open val createdBy: String? = null,

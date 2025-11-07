@@ -40,7 +40,7 @@ public class SecurityConfig {
                                 .requestMatchers("/uploads/**").permitAll()
                                 .requestMatchers("/h2-console/**").permitAll()
                                 .requestMatchers("/inventory/api/activity/**").hasRole("ADMIN")
-                                .anyRequest().permitAll())
+                                .anyRequest().authenticated())
                 .userDetailsService(userDetails)
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
