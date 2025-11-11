@@ -11,9 +11,9 @@ import java.util.NoSuchElementException;
 @ControllerAdvice
 public class ErrorHandlerController {
 
-    @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<ErrorResponseDto> handleElementNotFoundError(NoSuchElementException ex){
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDto(ex.getMessage(), 404));
-    }
+//    @ExceptionHandler(NoSuchElementException.class)
+//    public ResponseEntity<ErrorResponseDto> handleElementNotFoundError(NoSuchElementException ex){
+//        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDto(ex.getMessage(), 404));
+//    }
 
 }

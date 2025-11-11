@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -29,26 +30,71 @@ public class SaleItemsService {
         return repo.findAll().stream().map(mapper::saleItemToResponse).toList();
     }
 
-    @Transactional
-    public SaleItemResponseDto createSaleItems(SaleItemCreateDto dto, Sale sale) {
-        SaleItem item = repo.save(mapper.createToSaleItem(dto, sale));
-        Product product = item.getProduct();
-        Batch batch = item.getBatch();
+    public Batch getNextAvailableBatch(SaleItemCreateDto dto){
+        List<Batch> batches = batchRepo.findAll()
+                .stream()
+                .filter(batch1 -> Objects.equals(batch1.getProduct().getId(), dto.productId()))
+                .filter(batch1 -> batch1.getStockLeft() > 0)
+                .toList();
 
-        double newProductInstock = product.getInStock() - item.getAmount();
+        if (batches.isEmpty()) throw new NoSuchElementException("Product Out Of Stock");
+
+        return batches.getFirst();
+    }
+
+    public void processProduct(SaleItemCreateDto dto, Product product){
+        double newProductInstock = product.getInStock() - dto.amount();
 
         if (newProductInstock < 0)
             throw new ProductOutOfStockException(
                     product.getName(),
-                    item.getAmount(),
+                    dto.amount(),
                     product.getInStock()
             );
 
         product.setInStock(newProductInstock);
-        batch.setStockLeft(batch.getStockLeft() - item.getAmount());
 
-        batchRepo.save(batch);
         productRepo.save(product);
+    }
+
+    @Transactional
+    public SaleItemResponseDto createSaleItems(SaleItemCreateDto dto, Sale sale) {
+        SaleItem item = mapper.createToSaleItem(dto, sale);
+        Batch batch = item.getBatch();
+
+        Double saleAmount = dto.amount();
+
+
+        while(saleAmount > 0){
+
+            if (batch.getStockLeft() < 1) batch = getNextAvailableBatch(dto);
+            Double batchAmount = batch.getStockLeft();
+
+            double amountSold = 0;
+            SaleItem saveItem = SaleItem
+                    .builder()
+                    .product(item.getProduct())
+                    .salePrice(dto.price())
+                    .batch(batch)
+                    .sale(item.getSale())
+                    .build();
+
+            while(batchAmount > 0 && saleAmount > 0){
+                amountSold++;
+                batchAmount--;
+                saleAmount--;
+            }
+
+            saveItem.setAmount(amountSold);
+            batch.setStockLeft(batchAmount);
+
+            repo.save(saveItem);
+            batchRepo.save(batch);
+        }
+
+        Product product = item.getProduct();
+
+        processProduct(dto, product);
 
         createLog(item, Activity.CREATE);
         return mapper.saleItemToResponse(item);

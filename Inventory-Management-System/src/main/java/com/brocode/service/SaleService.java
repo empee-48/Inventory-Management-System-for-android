@@ -1,7 +1,6 @@
 package com.brocode.service;
 
 import com.brocode.entity.ActivityLog;
-import com.brocode.entity.Product;
 import com.brocode.entity.Sale;
 import com.brocode.repo.ActivityLogRepo;
 import com.brocode.repo.ProductRepo;
@@ -10,6 +9,7 @@ import com.brocode.service.dto.SaleCreateDto;
 import com.brocode.service.dto.SaleItemCreateDto;
 import com.brocode.service.dto.SaleResponseDto;
 import com.brocode.utils.Activity;
+import com.brocode.utils.IdGenerator;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -45,19 +45,24 @@ public class SaleService {
     @Transactional
     public SaleResponseDto createSale(SaleCreateDto dto){
         Sale sale = repo.save(mapper.createToSale(dto));
+        sale.setSaleId(IdGenerator.generateSaleId(sale));
 
         if (dto.items() != null) createSaleItems(dto.items(), sale);
 
         createLog(sale, Activity.CREATE);
-        return mapper.saleToResponse(sale);
+        return mapper.saleToResponse(repo.save(sale));
     }
 
     @Transactional
     public void delete(Long id){
         Sale sale = getSaleOrThrowError(id);
+
+        if (sale.getItems() != null) sale.getItems().forEach(item -> saleItemsService.delete(item.getId()));
+
         repo.delete(sale);
         createLog(sale, Activity.DELETE);
     }
+
     @Transactional
     public SaleResponseDto editSale(Long id, SaleCreateDto dto){
         Sale sale = getSaleOrThrowError(id);

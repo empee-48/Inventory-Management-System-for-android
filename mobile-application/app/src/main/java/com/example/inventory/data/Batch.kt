@@ -8,5 +8,6 @@ data class BatchResponseDto(
     val productName: String,
     val sales: List<SaleItemResponseDto>,
     val stockLeft: Double,
-    val orderDate: LocalDate
+    val orderDate: LocalDate,
+    val orderPrice: Double
 ): BaseResponseDto()

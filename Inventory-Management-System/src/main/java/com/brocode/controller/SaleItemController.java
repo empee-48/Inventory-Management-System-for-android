@@ -19,13 +19,16 @@ public class SaleItemController {
     @GetMapping
     public ResponseEntity<?> getSaleItems(
             @RequestParam(required = false) Long id,
-            @RequestParam(required = false) Long batchId
+            @RequestParam(required = false) Long batchId,
+            @RequestParam(required = false) Long productId
     ){
-        List<SaleItemResponseDto> sales = service.getSaleItems();
+        List<SaleItemResponseDto> sales = service.getSaleItems().reversed();
 
         if (id != null) return ResponseEntity.ok(sales.stream().filter(sale -> Objects.equals(sale.id(), id)).toList());
 
         if (batchId != null) return ResponseEntity.ok(sales.stream().filter(sale -> Objects.equals(sale.batchId(), batchId)).toList());
+
+        if (productId != null) return ResponseEntity.ok(sales.stream().filter(sale -> Objects.equals(sale.productId(), productId)).toList());
 
         return ResponseEntity.ok(sales);
     }

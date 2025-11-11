@@ -29,7 +29,7 @@ public class OrderController {
     ){
         if (id != null) return ResponseEntity.ok(service.getOrder(id));
 
-        List<OrderResponseDto> orders = service.getAll();
+        List<OrderResponseDto> orders = service.getAll().reversed();
 
         if (categoryId != null) orders = orders.stream().filter(order -> filterByOrderItemCategory(service.getOrderOrThrowError(order.id()), categoryId)).toList();
 
@@ -53,7 +53,7 @@ public class OrderController {
     public OrderResponseDto createOrder(
             @RequestBody OrderCreateDto dto
     ){
-        return service.createOrder(dto);
+        return service.createOrder(dto, true);
     }
 
     @DeleteMapping

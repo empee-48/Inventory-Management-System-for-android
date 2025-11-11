@@ -27,7 +27,7 @@ class RetrofitInstance(
     private val password: String? = null
 ) {
 
-    private val BASE_URL = "http://92.112.181.128:8082"
+    private val BASE_URL = "http://10.0.2.2:8082"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

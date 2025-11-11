@@ -2,6 +2,7 @@ package com.example.inventory.screens.composable.users
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -11,8 +12,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.inventory.data.UserResponseDto
 import com.example.inventory.service.api.UserApiService
 import kotlinx.coroutines.launch
@@ -53,52 +57,12 @@ fun UserDetailsScreen(
         }
     }
 
-    // Delete Confirmation Dialog
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                if (!isDeleting) {
-                    showDeleteDialog = false
-                }
-            },
-            title = {
-                Text("Delete User")
-            },
-            text = {
-                Column {
-                    Text("Are you sure you want to delete \"${user.username}\"?")
-                    if (deleteError != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = deleteError!!,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = handleDelete,
-                    enabled = !isDeleting
-                ) {
-                    if (isDeleting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDeleteDialog = false },
-                    enabled = !isDeleting
-                ) {
-                    Text("Cancel")
-                }
-            }
+        DeleteUserDialog(
+            user = user,
+            onDismiss = { showDeleteDialog = false },
+            onDeleteUser = handleDelete,
+            isDeleting = isDeleting
         )
     }
 
@@ -291,6 +255,137 @@ private fun InfoItemWithBorder(
                 thickness = 1.dp,
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+    }
+}
+
+@Composable
+fun DeleteUserDialog(
+    user: UserResponseDto,
+    onDismiss: () -> Unit,
+    onDeleteUser: () -> Unit,
+    isDeleting: Boolean
+) {
+    Dialog(
+        onDismissRequest = {
+            if (!isDeleting) {
+                onDismiss()
+            }
+        },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .widthIn(min = 400.dp, max = 500.dp)
+                .padding(16.dp),
+            shape = MaterialTheme.shapes.medium,
+            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF1A1A1A)
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Warning icon
+                Surface(
+                    color = Color(0xFFFFFFFF),
+                    shape = CircleShape,
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = Color(0xFFDC2626)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Title
+                Text(
+                    text = "Delete Product",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color(0xFFFFFFFF),
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Confirmation text
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Are you sure you want to delete user \"${user.username}\"??",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFFFFFFF),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        text = "This action cannot be undone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFDC2626),
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Buttons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Keep Product button
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFFFFFFF)
+                        ),
+                        enabled = !isDeleting
+                    ) {
+                        Text("Keep")
+                    }
+
+                    Button(
+                        onClick = onDeleteUser,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFDC2626).copy(alpha = 0.8f),
+                            contentColor = Color.White
+                        ),
+                        enabled = !isDeleting
+                    ) {
+                        if (isDeleting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Deleting...")
+                        } else {
+                            Text("Delete")
+                        }
+                    }
+                }
+            }
         }
     }
 }

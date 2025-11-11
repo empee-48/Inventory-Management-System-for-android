@@ -24,7 +24,7 @@ public class Order extends BaseEntity{
     private List<OrderItem> items;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Batch> bathes;
+    private List<Batch> batches;
 
     private Double totalAmount;
 

@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -14,6 +15,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,11 +27,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.inventory.data.CategoryCreateDto
 import com.example.inventory.data.CategoryResponseDto
 import com.example.inventory.data.ProductResponseDto
 import com.example.inventory.service.api.CategoryApiService
 import kotlinx.coroutines.launch
+import java.time.format.DateTimeFormatter
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,60 +113,26 @@ fun CategoryDetailsScreen(
                     }
                 },
                 actions = {
-                    // Edit Button
-                    Surface(
-                        onClick = { showEditDialog = true },
-                        shape = MaterialTheme.shapes.small,
-                        color = Color.Transparent,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(
-                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFF4A90D6),
-                                        Color(0xFF357ABD)
-                                    )
-                                ),
-                                shape = MaterialTheme.shapes.small
-                            )
+                    // Edit Button - Dark Gray
+                    IconButton(
+                        onClick = { showEditDialog = true }
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit Category",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Category",
+                            tint = Color(0xFF666666)
+                        )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Delete Button
-                    Surface(
-                        onClick = { showDeleteDialog = true },
-                        shape = MaterialTheme.shapes.small,
-                        color = Color.Transparent,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(
-                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFFFF6B6B),
-                                        Color(0xFFEE5A52)
-                                    )
-                                ),
-                                shape = MaterialTheme.shapes.small
-                            )
+                    // Delete Button - Dark Gray
+                    IconButton(
+                        onClick = { showDeleteDialog = true }
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete Category",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Category",
+                            tint = Color(0xFF666666)
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -181,15 +154,33 @@ fun CategoryDetailsScreen(
                 CategoryInfoSection(category = updatedCategory)
             }
 
+            // Metadata Section
+            item {
+                CategoryMetadataSection(category = updatedCategory)
+            }
+
             // Products Section
             item {
-                Text(
-                    text = "Products (${updatedCategory.products.size})",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1A1A1A),
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Products",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1A1A1A)
+                    )
+                    Text(
+                        text = "Count: ${updatedCategory.products.size}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF666666),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
 
             if (updatedCategory.products.isEmpty()) {
@@ -208,7 +199,134 @@ fun CategoryDetailsScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoryMetadataSection(category: CategoryResponseDto) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Metadata",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF1A1A1A)
+            )
+
+            // Created Information
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Created By",
+                    tint = Color(0xFF666666),
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = "Created by:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF666666),
+                    modifier = Modifier.width(100.dp)
+                )
+                Text(
+                    text = category.createdBy ?: "Unknown",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF1A1A1A),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Schedule,
+                    contentDescription = "Created At",
+                    tint = Color(0xFF666666),
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = "Created at:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF666666),
+                    modifier = Modifier.width(100.dp)
+                )
+                Text(
+                    text = category.createdAt?.format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' hh:mm a")) ?: "Unknown",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF1A1A1A),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Last Modified Information
+            if (category.lastModifiedBy != null || category.lastModifiedAt != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Last Modified By",
+                        tint = Color(0xFF666666),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Last modified by:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF666666),
+                        modifier = Modifier.width(110.dp)
+                    )
+                    Text(
+                        text = category.lastModifiedBy ?: "Unknown",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF1A1A1A),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.EditCalendar,
+                        contentDescription = "Last Modified At",
+                        tint = Color(0xFF666666),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Last modified at:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF666666),
+                        modifier = Modifier.width(110.dp)
+                    )
+                    Text(
+                        text = category.lastModifiedAt?.format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' hh:mm a")) ?: "Unknown",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF1A1A1A),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun DeleteCategoryDialog(
     category: CategoryResponseDto,
@@ -217,86 +335,142 @@ fun DeleteCategoryDialog(
 ) {
     var isDeleting by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = {
             if (!isDeleting) {
                 onDismiss()
             }
         },
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .widthIn(min = 400.dp, max = 500.dp)
+                .padding(16.dp),
+            shape = MaterialTheme.shapes.medium,
+            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF1A1A1A)
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("❌", style = MaterialTheme.typography.headlineMedium)
+                // Warning icon
+                Surface(
+                    color = Color(0xFFFFFFFF),
+                    shape = CircleShape,
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = Color(0xFFDC2626)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Title
                 Text(
                     text = "Delete Category",
-                    style = MaterialTheme.typography.headlineSmall
-                )
-            }
-        },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "Are you sure you want to delete \"${category.name}\"?",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color(0xFFFFFFFF),
+                    fontWeight = FontWeight.Bold
                 )
 
-                if (category.products.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Confirmation text
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text(
-                        text = "⚠️ This category contains ${category.products.size} product(s). Deleting it may affect these products.",
+                        text = "Are you sure you want to delete \"${category.name}\"?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFFFFFFF),
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (category.products.isNotEmpty()) {
+                        Text(
+                            text = "⚠️ This category contains ${category.products.size} product(s). Deleting it may affect these products.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFFFB800),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Text(
+                        text = "This action cannot be undone.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFD97706)
+                        color = Color(0xFFDC2626),
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
                     )
                 }
 
-                Text(
-                    text = "This action cannot be undone.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFFDC2626),
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        },
-        confirmButton = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TextButton(
-                    onClick = onDismiss,
-                    enabled = !isDeleting
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Buttons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Cancel")
-                }
-                Button(
-                    onClick = {
-                        isDeleting = true
-                        onDeleteCategory()
-                    },
-                    enabled = !isDeleting,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFDC2626)
-                    )
-                ) {
-                    if (isDeleting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Deleting...")
-                    } else {
-                        Text("Delete")
+                    // Keep Category button
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFFFFFFF)
+                        ),
+                        enabled = !isDeleting
+                    ) {
+                        Text("Keep")
+                    }
+
+                    // Delete Category button
+                    Button(
+                        onClick = {
+                            isDeleting = true
+                            onDeleteCategory()
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFDC2626).copy(alpha = 0.8f),
+                            contentColor = Color.White
+                        ),
+                        enabled = !isDeleting
+                    ) {
+                        if (isDeleting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Deleting...")
+                        } else {
+                            Text("Delete")
+                        }
                     }
                 }
             }
         }
-    )
+    }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditCategoryDialog(

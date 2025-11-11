@@ -41,6 +41,7 @@ public class BatchMapper {
                 batch.getSales().stream().map(saleItemMapper::saleItemToResponse).toList(),
                 batch.getStockLeft(),
                 batch.getOrder().getOrderDate(),
+                batch.getOrderPrice(),
                 batch.getCreatedBy(),
                 batch.getLastModifiedBy(),
                 batch.getCreatedAt(),

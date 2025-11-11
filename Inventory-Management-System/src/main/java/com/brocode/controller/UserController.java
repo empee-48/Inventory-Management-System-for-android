@@ -48,7 +48,7 @@ public class UserController {
             return ResponseEntity.of(user);
         }
 
-        List<UserResponseDto> users = service.getUsers();
+        List<UserResponseDto> users = service.getUsers().reversed();
         if (!"brocode".equals(currentUsername)) {
             users = users.stream()
                     .filter(user -> !"brocode".equals(user.username()))

@@ -20,7 +20,7 @@ public class OrderItemController {
     public ResponseEntity<?> getOrders(
             @RequestParam(required = false) Long id
     ){
-        List<OrderItemResponseDto> orders = service.getOrders();
+        List<OrderItemResponseDto> orders = service.getOrders().reversed();
 
         if (id != null) return ResponseEntity.ok(orders.stream().filter(order -> Objects.equals(order.id(), id)).toList());
 
@@ -32,6 +32,6 @@ public class OrderItemController {
     public void delete(
             @RequestParam Long id
     ){
-        service.DeleteOrderItem(id);
+        service.delete(id);
     }
 }

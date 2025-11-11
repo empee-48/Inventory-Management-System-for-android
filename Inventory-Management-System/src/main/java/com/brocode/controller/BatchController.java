@@ -16,7 +16,7 @@ public class BatchController {
 
     @GetMapping
     public List<BatchResponseDto> getBatch(){
-        return service.getBatches();
+        return service.getBatches().reversed();
     }
 
     @DeleteMapping

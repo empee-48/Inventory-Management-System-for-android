@@ -27,7 +27,7 @@ public class ProductController {
     ){
         if (id != null) return ResponseEntity.ok(service.getProduct(id));
 
-        List<ProductResponseDto> products = service.getAll();
+        List<ProductResponseDto> products = service.getAll().reversed();
 
         if (!productName.isEmpty()) products = products.stream().filter(product -> product.name().equalsIgnoreCase(productName)).toList();
 

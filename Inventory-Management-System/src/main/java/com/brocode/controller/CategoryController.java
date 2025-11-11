@@ -21,9 +21,9 @@ public class CategoryController {
     ){
         if (id != null) return ResponseEntity.ok(service.getCategory(id));
 
-        if (!categoryName.isEmpty()) return ResponseEntity.ok(service.getAll().stream().filter(category -> category.name().equalsIgnoreCase(categoryName)));
+        if (!categoryName.isEmpty()) return ResponseEntity.ok(service.getAll().stream().filter(category -> category.name().equalsIgnoreCase(categoryName)).toList().reversed());
 
-        return ResponseEntity.ok(service.getAll());
+        return ResponseEntity.ok(service.getAll().reversed());
     }
 
     @PostMapping

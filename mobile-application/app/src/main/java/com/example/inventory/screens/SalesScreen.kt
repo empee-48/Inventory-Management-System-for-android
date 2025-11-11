@@ -81,6 +81,7 @@ fun SalesScreen(
                 },
                 salesApiService = salesApiService,
                 productApiService = productApiService,
+                batchApiService = batchApiService,
                 onDeleteSale = {
                     screenState = SalesScreenState.List
                 },

@@ -2,33 +2,40 @@ package com.example.inventory.screens.composable.products
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.inventory.data.ProductResponseDto
 import com.example.inventory.service.api.ProductApiService
+import com.example.inventory.service.api.SalesApiService
 import kotlinx.coroutines.launch
+import java.time.format.DateTimeFormatter
 
 data class StatusInfo(
-    val backgroundColor: Color,
-    val textColor: Color,
-    val text: String,
-    val emoji: String
+val backgroundColor: Color,
+val textColor: Color,
+val text: String,
+val emoji: String
 )
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -39,11 +46,38 @@ fun ProductDetailsScreen(
     onBack: () -> Unit,
     onEdit: (ProductResponseDto) -> Unit,
     onDelete: (ProductResponseDto) -> Unit,
-    productApiService: ProductApiService
+    productApiService: ProductApiService,
+    salesApiService: SalesApiService
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showCannotDeleteDialog by remember { mutableStateOf(false) }
     var isDeleting by remember { mutableStateOf(false) }
+    var isCheckingSales by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    val handleDeleteCheck: () -> Unit = {
+        isCheckingSales = true
+        coroutineScope.launch {
+            try {
+                // Check if there are any sale items for this product
+                val response = salesApiService.getSaleItems(productId = product.id)
+                if (response.isSuccessful) {
+                    val saleItems = response.body()
+                    if (saleItems.isNullOrEmpty()) {
+                        showDeleteDialog = true
+                    } else {
+                        showCannotDeleteDialog = true
+                    }
+                } else {
+                    showDeleteDialog = true
+                }
+            } catch (e: Exception) {
+                showDeleteDialog = true
+            } finally {
+                isCheckingSales = false
+            }
+        }
+    }
 
     val handleDelete: () -> Unit = {
         isDeleting = true
@@ -63,37 +97,18 @@ fun ProductDetailsScreen(
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { if (!isDeleting) showDeleteDialog = false },
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("❌", style = MaterialTheme.typography.headlineMedium)
-                    Text("Delete Product")
-                }
-            },
-            text = { Text("Are you sure you want to delete \"${product.name}\"?") },
-            confirmButton = {
-                TextButton(
-                    onClick = handleDelete,
-                    enabled = !isDeleting
-                ) {
-                    if (isDeleting) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    }
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDeleteDialog = false },
-                    enabled = !isDeleting
-                ) {
-                    Text("Cancel")
-                }
-            }
+        DeleteProductDialog(
+            product = product,
+            onDismiss = { showDeleteDialog = false },
+            onDeleteProduct = handleDelete,
+            isDeleting = isDeleting
+        )
+    }
+
+    if (showCannotDeleteDialog) {
+        CannotDeleteProductDialog(
+            product = product,
+            onDismiss = { showCannotDeleteDialog = false }
         )
     }
 
@@ -107,62 +122,33 @@ fun ProductDetailsScreen(
                     }
                 },
                 actions = {
-                    // Edit Button
-                    Surface(
-                        onClick = { onEdit(product) },
-                        shape = MaterialTheme.shapes.small,
-                        color = Color.Transparent,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .padding(horizontal = 4.dp)
-                            .background(
-                                brush = Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFF4A90D6),
-                                        Color(0xFF357ABD),
-                                        Color(0xFF1E5FA4)
-                                    )
-                                ),
-                                shape = MaterialTheme.shapes.small
-                            )
+                    // Edit Button - Dark Gray
+                    IconButton(
+                        onClick = { onEdit(product) }
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = Color(0xFF666666)
+                        )
                     }
 
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    // Delete Button
-                    Surface(
-                        onClick = { showDeleteDialog = true },
-                        shape = MaterialTheme.shapes.small,
-                        color = Color.Transparent,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .padding(horizontal = 4.dp)
-                            .background(
-                                brush = Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFFFF6B6B),
-                                        Color(0xFFEE5A52),
-                                        Color(0xFFDC2626)
-                                    )
-                                ),
-                                shape = MaterialTheme.shapes.small
-                            )
+                    // Delete Button - Dark Gray
+                    IconButton(
+                        onClick = handleDeleteCheck,
+                        enabled = !isCheckingSales
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
+                        if (isCheckingSales) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFF666666)
+                            )
+                        } else {
                             Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = "Delete",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
+                                tint = Color(0xFF666666)
                             )
                         }
                     }
@@ -179,12 +165,10 @@ fun ProductDetailsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Header Section
             ProductHeader(product = product)
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Metrics Cards Section
             MetricsCards(product = product)
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -193,6 +177,253 @@ fun ProductDetailsScreen(
             ProductInformation(product = product)
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            // Metadata Section
+            ProductMetadataSection(product = product)
+
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+fun CannotDeleteProductDialog(
+    product: ProductResponseDto,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .widthIn(min = 400.dp, max = 500.dp)
+                .padding(16.dp),
+            shape = MaterialTheme.shapes.medium,
+            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF1A1A1A)
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Warning icon
+                Surface(
+                    color = Color(0xFFFFFBEB),
+                    shape = CircleShape,
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = Color(0xFFD97706)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Title
+                Text(
+                    text = "Cannot Delete Product",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color(0xFFFFFFFF),
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Explanation text
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "This product cannot be deleted because it has been sold.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFFFFFFF),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        text = "\"${product.name}\" has sales history associated with it. To maintain data integrity, products with sales records cannot be deleted.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFCCCCCC),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        text = "You can archive the product or update its status instead.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFFFB800),
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Action button
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.small,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4A90D6),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Close")
+                }
+            }
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+private fun ProductMetadataSection(product: ProductResponseDto) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+    ) {
+        // Section Title
+        Text(
+            text = "Metadata",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF1A1A1A),
+            modifier = Modifier.padding(bottom = 20.dp)
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Created Information
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Created By",
+                        tint = Color(0xFF666666),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Created by:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF666666),
+                        modifier = Modifier.width(100.dp)
+                    )
+                    Text(
+                        text = product.createdBy ?: "Unknown",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF1A1A1A),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = "Created At",
+                        tint = Color(0xFF666666),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Created at:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF666666),
+                        modifier = Modifier.width(100.dp)
+                    )
+                    Text(
+                        text = product.createdAt?.format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' hh:mm a")) ?: "Unknown",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF1A1A1A),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Last Modified Information
+                if (product.lastModifiedBy != null || product.lastModifiedAt != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Last Modified By",
+                            tint = Color(0xFF666666),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Last modified by:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF666666),
+                            modifier = Modifier.width(110.dp)
+                        )
+                        Text(
+                            text = product.lastModifiedBy ?: "Unknown",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF1A1A1A),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EditCalendar,
+                            contentDescription = "Last Modified At",
+                            tint = Color(0xFF666666),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Last modified at:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF666666),
+                            modifier = Modifier.width(110.dp)
+                        )
+                        Text(
+                            text = product.lastModifiedAt?.format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' hh:mm a")) ?: "Unknown",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF1A1A1A),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -215,7 +446,7 @@ private fun ProductHeader(product: ProductResponseDto) {
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "SKU: ${product.productKey ?: "Not specified"}",
+            text = "SKU: ${product.id.toString()}",
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF666666)
         )
@@ -228,6 +459,147 @@ private fun ProductHeader(product: ProductResponseDto) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             StatusBadge(product = product)
+        }
+    }
+}
+
+@Composable
+fun DeleteProductDialog(
+    product: ProductResponseDto,
+    onDismiss: () -> Unit,
+    onDeleteProduct: () -> Unit,
+    isDeleting: Boolean
+) {
+    Dialog(
+        onDismissRequest = {
+            if (!isDeleting) {
+                onDismiss()
+            }
+        },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .widthIn(min = 400.dp, max = 500.dp)
+                .padding(16.dp),
+            shape = MaterialTheme.shapes.medium,
+            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF1A1A1A)
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Warning icon
+                Surface(
+                    color = Color(0xFFFFFFFF),
+                    shape = CircleShape,
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = Color(0xFFDC2626)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Title
+                Text(
+                    text = "Delete Product",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color(0xFFFFFFFF),
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Confirmation text
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Are you sure you want to delete \"${product.name}\"?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFFFFFFF),
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (product.inStock > 0) {
+                        Text(
+                            text = "⚠️ This product has ${product.inStock.toInt()} units in stock that will be removed.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFFFB800),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Text(
+                        text = "This action cannot be undone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFDC2626),
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Buttons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Keep Product button
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFFFFFFF)
+                        ),
+                        enabled = !isDeleting
+                    ) {
+                        Text("Keep")
+                    }
+
+                    // Delete Product button
+                    Button(
+                        onClick = onDeleteProduct,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFDC2626).copy(alpha = 0.8f),
+                            contentColor = Color.White
+                        ),
+                        enabled = !isDeleting
+                    ) {
+                        if (isDeleting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Deleting...")
+                        } else {
+                            Text("Delete")
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Money
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.inventory.data.CategoryResponseDto
 import com.example.inventory.data.ProductCreateDto
+import com.example.inventory.screens.composable.common.LoadingComponent
 import com.example.inventory.service.api.CategoryApiService
 import com.example.inventory.service.api.ProductApiService
 import kotlinx.coroutines.launch
@@ -202,12 +204,7 @@ fun AddProductScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        CircularProgressIndicator()
-                        Text(
-                            text = "Loading categories...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        LoadingComponent(message = "Please Wait...")
                     }
                 }
             } else if (errorMessage != null) {
@@ -281,7 +278,7 @@ fun AddProductScreen(
                     )
 
                     // Category Selection
-                    CategoryDropdown(
+                    SearchableCategoryDropdown(
                         categories = categories,
                         selectedCategory = selectedCategory,
                         onCategorySelected = { selectedCategory = it },
@@ -427,7 +424,7 @@ fun AddProductScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryDropdown(
+fun SearchableCategoryDropdown(
     categories: List<CategoryResponseDto>,
     selectedCategory: CategoryResponseDto?,
     onCategorySelected: (CategoryResponseDto) -> Unit,
@@ -435,6 +432,18 @@ fun CategoryDropdown(
     enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    // Filter categories based on search query
+    val filteredCategories = remember(categories, searchQuery) {
+        if (searchQuery.isBlank()) {
+            categories
+        } else {
+            categories.filter { category ->
+                category.name?.contains(searchQuery, ignoreCase = true) == true
+            }
+        }
+    }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -442,46 +451,70 @@ fun CategoryDropdown(
         modifier = modifier
     ) {
         OutlinedTextField(
-            value = selectedCategory?.name ?: "",
-            onValueChange = { },
+            value = searchQuery.ifBlank { selectedCategory?.name ?: "" },
+            onValueChange = { newValue ->
+                searchQuery = newValue
+                if (newValue.isNotBlank()) {
+                    expanded = true
+                }
+            },
             label = { Text("Category *") },
-            placeholder = { Text("Select a category") },
+            placeholder = { Text("Search or select a category") },
             leadingIcon = {
                 Icon(Icons.Default.Category, "Category")
             },
             trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                if (searchQuery.isNotBlank()) {
+                    IconButton(
+                        onClick = {
+                            searchQuery = ""
+                            expanded = false
+                        }
+                    ) {
+                        Icon(Icons.Default.Search, "Clear search")
+                    }
+                } else {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                }
             },
-            readOnly = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(),
+            shape = MaterialTheme.shapes.large,
             isError = selectedCategory == null && categories.isNotEmpty(),
-            enabled = enabled
+            enabled = enabled,
+            colors = TextFieldDefaults.colors()
         )
 
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.heightIn(max = 200.dp)
         ) {
-            if (categories.isEmpty()) {
+            if (filteredCategories.isEmpty()) {
                 DropdownMenuItem(
                     text = {
-                        Text("No categories available")
+                        Text(
+                            "No categories found",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     },
                     onClick = { expanded = false }
                 )
             } else {
-                categories.forEach { category ->
+                filteredCategories.forEach { category ->
                     DropdownMenuItem(
                         text = {
                             Text(
                                 text = category.name ?: "Unnamed Category",
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (category == selectedCategory) FontWeight.SemiBold else FontWeight.Normal
                             )
                         },
                         onClick = {
                             onCategorySelected(category)
+                            searchQuery = ""
                             expanded = false
                         },
                         modifier = Modifier.fillMaxWidth()

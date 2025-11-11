@@ -10,6 +10,7 @@ import com.brocode.repo.ProductRepo;
 import com.brocode.service.dto.OrderItemCreateDto;
 import com.brocode.service.dto.OrderItemResponseDto;
 import com.brocode.utils.Activity;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -32,23 +33,27 @@ public class OrderItemsService {
         return repo.findAll().stream().map(mapper::orderItemToResponse).toList();
     }
 
-    public OrderItemResponseDto createOrderItems(OrderItemCreateDto dto, Order order) {
+    @Transactional
+    public OrderItemResponseDto createOrderItems(OrderItemCreateDto dto, Order order, boolean addStock) {
         OrderItem item = repo.save(mapper.createToOrderItem(dto, order));
 
-        Product product = item.getProduct();
-        product.setInStock(product.getInStock() + item.getAmount());
+        if (addStock){
+            Product product = item.getProduct();
+            product.setInStock(product.getInStock() + item.getAmount());
 
-        productRepo.save(product);
+            productRepo.save(product);
+        }
 
         createLog(item, Activity.CREATE);
         return mapper.orderItemToResponse(item);
     }
 
-    public void DeleteOrderItem(Long id){
+    @Transactional
+    public void delete(Long id){
         OrderItem orderItem = getOrderItemOrThrowError(id);
 
         Product product = orderItem.getProduct();
-        product.setInStock(product.getInStock() + orderItem.getAmount());
+        product.setInStock(product.getInStock() - orderItem.getAmount());
 
         productRepo.save(product);
 

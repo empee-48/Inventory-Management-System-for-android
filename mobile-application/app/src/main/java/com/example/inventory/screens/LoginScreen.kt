@@ -1,6 +1,9 @@
 package com.example.inventory.screens
 
 import android.app.Application
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -24,10 +28,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.inventory.R
 import com.example.inventory.viewModels.LoginError
 import com.example.inventory.viewModels.LoginViewModel
 import com.example.inventory.viewModels.LoginViewModelFactory
+import java.time.LocalDate
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -102,7 +109,6 @@ fun LoginScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Company Logo Placeholder
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = Color.White,
@@ -113,11 +119,12 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "LOGO",
-                            color = Color(0xFF1A237E),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
+                        val logoPainter = painterResource(id = R.drawable.logo)
+
+                        Image(
+                            painter = logoPainter,
+                            contentDescription = "App Logo",
+                            modifier = Modifier.size(128.dp)
                         )
                     }
                 }
@@ -337,7 +344,7 @@ fun LoginScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "© 2024 Inventory Pro. All rights reserved.",
+                            text = "© ${LocalDate.now().year} Inventory Pro. All rights reserved.",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF94A3B8),
                             textAlign = TextAlign.Center

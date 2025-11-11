@@ -30,7 +30,7 @@ public class SaleController {
     ){
         if (id != null) return ResponseEntity.ok(service.getSale(id));
 
-        List<SaleResponseDto> sales = service.getAll();
+        List<SaleResponseDto> sales = service.getAll().reversed();
 
         if (categoryId != null) sales = sales.stream().filter(sale -> filterBySaleItemCategory(service.getSaleOrThrowError(sale.id()), categoryId)).toList();
 

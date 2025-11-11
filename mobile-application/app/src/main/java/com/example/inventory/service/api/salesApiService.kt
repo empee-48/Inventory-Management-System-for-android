@@ -1,6 +1,7 @@
 package com.example.inventory.service.api
 
 import com.example.inventory.data.SaleCreateDto
+import com.example.inventory.data.SaleItemResponseDto
 import com.example.inventory.data.SalesResponseDto
 import retrofit2.Response
 import retrofit2.http.*
@@ -17,6 +18,13 @@ interface SalesApiService {
         @Query("lowerSalesBoundary") lowerSalesBoundary: Double? = null,
         @Query("higherSalesBoundary") higherSalesBoundary: Double? = null
     ): Response<List<SalesResponseDto>>
+
+    @GET("inventory/api/sales/items")
+    suspend fun getSaleItems(
+        @Query("id") id: Long? = null,
+        @Query("productId") productId: Long? = null,
+        @Query("batchId") batchId: Long? = null,
+    ): Response<List<SaleItemResponseDto>>
 
     @POST("inventory/api/sales")
     suspend fun createSale(

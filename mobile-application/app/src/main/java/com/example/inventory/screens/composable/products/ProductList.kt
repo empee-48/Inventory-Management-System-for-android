@@ -1,5 +1,9 @@
 package com.example.inventory.screens.composable.products
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,6 +29,8 @@ import com.example.inventory.data.CategoryResponseDto
 import com.example.inventory.data.ProductResponseDto
 import com.example.inventory.service.api.CategoryApiService
 import com.example.inventory.service.api.ProductApiService
+import com.example.inventory.screens.composable.common.LoadingComponent
+import com.example.inventory.screens.composable.common.LoadingComponentSmall
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,6 +56,9 @@ fun ProductsList(
     var maxPrice by remember { mutableStateOf("") }
     var categories by remember { mutableStateOf<List<CategoryResponseDto>>(emptyList()) }
 
+    // Track if this is the initial load
+    var isInitialLoad by remember { mutableStateOf(true) }
+
     val fetchProducts: (Map<String, Any?>) -> Unit = { filters ->
         coroutineScope.launch {
             internalRefreshing = true
@@ -72,6 +81,7 @@ fun ProductsList(
                 errorMessage = "Network error: ${e.message}"
             } finally {
                 internalRefreshing = false
+                isInitialLoad = false
             }
         }
     }
@@ -133,8 +143,8 @@ fun ProductsList(
         )
     }
 
-    // Show loading state
-    if (products == null && errorMessage == null && !isRefreshing && !internalRefreshing) {
+    // Show loading state - FIXED: Check for initial load OR refreshing state
+    if ((isInitialLoad && products == null) || (internalRefreshing && products == null)) {
         LoadingState()
         return
     }
@@ -145,6 +155,7 @@ fun ProductsList(
             errorMessage = errorMessage!!,
             onRetry = {
                 errorMessage = null
+                isInitialLoad = true
                 internalRefreshing = true
                 fetchProducts(emptyMap())
             }
@@ -162,13 +173,13 @@ fun ProductsList(
         item {
             ButtonPanel(
                 onRefresh = {
-                    onRefresh()
+                    // FIX: Only set refreshing and call fetchProducts, don't call onRefresh
                     internalRefreshing = true
                     fetchProducts(emptyMap())
                 },
                 onFilter = { showFilterDialog = true },
                 onNavigateToCategories = onNavigateToCategories,
-                isRefreshing = internalRefreshing || isRefreshing,
+                isRefreshing = internalRefreshing,
                 hasActiveFilters = selectedProduct != null ||
                         productNameFilter.isNotBlank() ||
                         selectedCategory != null ||
@@ -201,19 +212,10 @@ private fun LoadingState() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            CircularProgressIndicator(
-                color = Color(0xFF4A90D6)
-            )
-            Text(
-                text = "Loading products...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        LoadingComponent(
+            message = "Loading products...",
+            modifier = Modifier.align(Alignment.Center)
+        )
     }
 }
 
@@ -225,50 +227,151 @@ private fun ButtonPanel(
     isRefreshing: Boolean = false,
     hasActiveFilters: Boolean = false
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 0.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 8.dp
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+        )
     ) {
-        FilledTonalButton(
-            onClick = onFilter,
-            modifier = Modifier.weight(1f),
-            colors = if (hasActiveFilters) {
-                ButtonDefaults.filledTonalButtonColors(
-                    containerColor = Color(0xFF4A90D6).copy(alpha = 0.1f),
-                    contentColor = Color(0xFF4A90D6)
-                )
-            } else {
-                ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 8.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.FilterList,
-                contentDescription = "Filter",
-                modifier = Modifier.size(18.dp)
+            // Filter Button
+            BlueAccentButton(
+                onClick = onFilter,
+                icon = Icons.Default.FilterList,
+                label = "Filter",
+                isActive = hasActiveFilters,
+                modifier = Modifier.weight(1f)
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Filter")
-        }
 
-        FilledTonalButton(
-            onClick = onNavigateToCategories,
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            // Minimal divider
+            Spacer(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(24.dp)
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
             )
+
+            // Categories Button
+            BlueAccentButton(
+                onClick = onNavigateToCategories,
+                icon = Icons.Default.Category,
+                label = "Categories",
+                isActive = false,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Minimal divider
+            Spacer(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(24.dp)
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
+            )
+
+            // Refresh Button - Clean and minimal
+            Box(
+                modifier = Modifier
+                    .weight(0.7f)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isRefreshing) {
+                    LoadingComponentSmall(
+                        message = "",
+                        size = 16.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    IconButton(
+                        onClick = onRefresh,
+                        modifier = Modifier.size(40.dp),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BlueAccentButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isActive: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isActive) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 200)
+    )
+
+    val contentColor by animateColorAsState(
+        targetValue = if (isActive) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+        },
+        animationSpec = tween(durationMillis = 200)
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = backgroundColor,
+        tonalElevation = 0.dp
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(vertical = 10.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Category,
-                contentDescription = "Categories",
-                modifier = Modifier.size(18.dp)
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(20.dp),
+                tint = contentColor
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Categories")
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
+                color = contentColor,
+                maxLines = 1
+            )
         }
     }
 }

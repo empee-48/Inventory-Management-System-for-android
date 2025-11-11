@@ -20,7 +20,7 @@ public class SupplierController {
     ){
         if (id != null) return ResponseEntity.ok(service.getSupplier(id));
 
-        return ResponseEntity.ok(service.getAll());
+        return ResponseEntity.ok(service.getAll().reversed());
     }
 
     @PostMapping

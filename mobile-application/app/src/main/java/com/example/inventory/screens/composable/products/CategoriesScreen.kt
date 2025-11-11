@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.inventory.data.CategoryCreateDto
 import com.example.inventory.data.CategoryResponseDto
+import com.example.inventory.screens.composable.common.LoadingComponent
 import com.example.inventory.service.api.CategoryApiService
 import kotlinx.coroutines.launch
 
@@ -340,14 +341,7 @@ fun LoadingCategoriesState() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            CircularProgressIndicator(
-                color = Color(0xFF4A90D6)
-            )
-            Text(
-                text = "Loading categories...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF666666)
-            )
+            LoadingComponent(message = "Please Wait...")
         }
     }
 }

@@ -39,7 +39,7 @@ public class OrderMapper {
     public Order createToOrder(OrderCreateDto dto) {
         Supplier supplier = null;
 
-        if (dto.supplierId() != null) supplier = supplierRepo.findById(dto.supplierId()).orElseThrow(() -> new NoSuchElementException("Order Not Found"));
+        if (dto.supplierId() != null) supplier = supplierRepo.findById(dto.supplierId()).orElseThrow(() -> new NoSuchElementException("Supplier Not Found"));
 
         return Order.builder()
                 .orderDate(dto.orderDate())

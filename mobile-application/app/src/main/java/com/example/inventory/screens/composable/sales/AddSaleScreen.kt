@@ -19,6 +19,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.inventory.data.*
+import com.example.inventory.screens.composable.common.LoadingComponent
 import com.example.inventory.service.api.BatchApiService
 import com.example.inventory.service.api.ProductApiService
 import com.example.inventory.service.api.SalesApiService
@@ -201,14 +202,7 @@ fun AddSaleScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        CircularProgressIndicator(
-                            color = Color(0xFF4A90D6)
-                        )
-                        Text(
-                            text = "Loading products and batches...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        LoadingComponent(message = "Please Wait...")
                     }
                 }
             } else if (errorMessage != null) {

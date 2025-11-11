@@ -62,7 +62,10 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.ktx)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.security.crypto)
-
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    implementation("androidx.activity:activity-compose:1.8.0")
+    implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     implementation(libs.androidx.compose.foundation)
 

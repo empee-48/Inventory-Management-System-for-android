@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.inventory.data.*
+import com.example.inventory.screens.composable.common.LoadingComponent
 import com.example.inventory.service.api.OrdersApiService
 import com.example.inventory.service.api.ProductApiService
 import kotlinx.coroutines.launch
@@ -34,7 +35,7 @@ fun EditOrderScreen(
     order: OrderResponseDto,
     onBack: () -> Unit,
     onSave: (Long, OrderCreateDto) -> Unit,
-    onDeleteOrder: () -> Unit, // Callback for navigation after order deletion
+    onDeleteOrder: () -> Unit,
     orderApiService: OrdersApiService,
     productApiService: ProductApiService
 ) {
@@ -54,7 +55,7 @@ fun EditOrderScreen(
         mutableStateOf(
             order.items.map { item ->
                 OrderItemWithId(
-                    id = item.id, // Store the original item ID for deletion
+                    id = item.id,
                     productId = item.productId,
                     amount = item.amount.toInt(),
                     orderPrice = item.orderPrice
@@ -130,6 +131,13 @@ fun EditOrderScreen(
         }
     }
 
+    // Handle updating an item (for new items only)
+    val handleUpdateItem = { index: Int, updatedItem: OrderItemWithId ->
+        orderItems = orderItems.toMutableList().apply {
+            this[index] = updatedItem
+        }
+    }
+
     val handleDeleteItem = { itemId: Long?, index: Int ->
         coroutineScope.launch {
             try {
@@ -174,6 +182,16 @@ fun EditOrderScreen(
                 submitError = "Network error: ${e.message}"
             }
         }
+    }
+
+    // Function to add a new item
+    val handleAddItem = {
+        orderItems = orderItems + OrderItemWithId(
+            id = null,
+            productId = 0,
+            amount = 1,
+            orderPrice = 0.0
+        )
     }
 
     val handleSave = {
@@ -224,7 +242,6 @@ fun EditOrderScreen(
                     try {
                         val deleteSuccess = deleteOrder()
                         if (deleteSuccess) {
-                            // Order successfully deleted, navigate back
                             onDeleteOrder()
                         } else {
                             submitError = "Failed to delete order"
@@ -236,7 +253,6 @@ fun EditOrderScreen(
             },
             onDismiss = {
                 showDeleteOrderDialog = false
-                // User chose to keep the empty order, just navigate back
                 onBack()
             }
         )
@@ -323,14 +339,7 @@ fun EditOrderScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        CircularProgressIndicator(
-                            color = Color(0xFF4A90D6)
-                        )
-                        Text(
-                            text = "Loading products...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        LoadingComponent(message = "Please Wait...")
                     }
                 }
             } else if (errorMessage != null) {
@@ -461,6 +470,20 @@ fun EditOrderScreen(
                         color = Color(0xFF1A1A1A)
                     )
 
+                    FilledTonalButton(
+                        onClick = handleAddItem,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.small,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = Color(0xFF4A90D6).copy(alpha = 0.1f),
+                            contentColor = Color(0xFF4A90D6)
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, "Add Item")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Item")
+                    }
+
                     // Items List
                     if (orderItems.isEmpty()) {
                         Surface(
@@ -493,7 +516,7 @@ fun EditOrderScreen(
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = "All items have been removed",
+                                    text = "Add items to this order using the 'Add Item' button above",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Color(0xFF9CA3AF),
                                     textAlign = TextAlign.Center
@@ -502,12 +525,24 @@ fun EditOrderScreen(
                         }
                     } else {
                         orderItems.forEachIndexed { index, item ->
-                            EditOrderItemRow(
-                                item = item,
-                                index = index,
-                                products = products,
-                                onDelete = { handleDeleteItem(item.id, index) }
-                            )
+                            if (item.id != null) {
+                                // Existing item (read-only)
+                                EditOrderItemRow(
+                                    item = item,
+                                    index = index,
+                                    products = products,
+                                    onDelete = { handleDeleteItem(item.id, index) }
+                                )
+                            } else {
+                                // New item (editable)
+                                EditableOrderItemRow(
+                                    item = item,
+                                    index = index,
+                                    products = products,
+                                    onUpdate = { updatedItem -> handleUpdateItem(index, updatedItem) },
+                                    onDelete = { handleDeleteItem(null, index) }
+                                )
+                            }
                             if (index < orderItems.size - 1) {
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
@@ -613,9 +648,9 @@ fun EditOrderScreen(
 // Data class to hold order items with their database IDs
 data class OrderItemWithId(
     val id: Long? = null,
-    val productId: Long,
-    val amount: Int,
-    val orderPrice: Double
+    var productId: Long,
+    var amount: Int,
+    var orderPrice: Double
 )
 
 @Composable
@@ -664,7 +699,7 @@ fun EditOrderItemRow(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Item ${index + 1}",
+                    text = "Item ${index + 1} (Existing)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1A1A1A)
@@ -725,6 +760,191 @@ fun EditOrderItemRow(
 
             // Subtotal
             val subtotal = item.amount * item.orderPrice
+            Surface(
+                color = Color(0xFFF3F4F6),
+                shape = MaterialTheme.shapes.small
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Subtotal:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF6B7280),
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "$${"%.2f".format(subtotal)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xFF4A90D6),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditableOrderItemRow(
+    item: OrderItemWithId,
+    index: Int,
+    products: List<ProductResponseDto>,
+    onUpdate: (OrderItemWithId) -> Unit,
+    onDelete: () -> Unit
+) {
+    var selectedProduct by remember { mutableStateOf(item.productId) }
+    var amount by remember { mutableStateOf(item.amount.toString()) }
+    var price by remember { mutableStateOf(item.orderPrice.toString()) }
+    var productExpanded by remember { mutableStateOf(false) }
+
+    // Update parent when values change
+    LaunchedEffect(selectedProduct, amount, price) {
+        val updatedItem = OrderItemWithId(
+            id = item.id,
+            productId = selectedProduct,
+            amount = amount.toIntOrNull() ?: 0,
+            orderPrice = price.toDoubleOrNull() ?: 0.0
+        )
+        onUpdate(updatedItem)
+    }
+
+    Surface(
+        color = Color.White,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 4.dp,
+                shape = MaterialTheme.shapes.medium
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header with remove button
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Item ${index + 1} (New)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A1A1A)
+                )
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Remove Item",
+                        tint = Color(0xFFDC2626)
+                    )
+                }
+            }
+
+            // Product Selection (editable)
+            ExposedDropdownMenuBox(
+                expanded = productExpanded,
+                onExpandedChange = { productExpanded = !productExpanded }
+            ) {
+                OutlinedTextField(
+                    value = products.find { it.id == selectedProduct }?.name ?: "Select Product",
+                    onValueChange = { },
+                    label = { Text("Product *") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Inventory2, "Product")
+                    },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = productExpanded)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    readOnly = true,
+                    isError = selectedProduct == 0L,
+                    shape = MaterialTheme.shapes.small
+                )
+
+                ExposedDropdownMenu(
+                    expanded = productExpanded,
+                    onDismissRequest = { productExpanded = false }
+                ) {
+                    products.forEach { product ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(product.name ?: "Unnamed Product")
+                                    Text(
+                                        "Price: $${"%.2f".format(product.price)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF6B7280)
+                                    )
+                                }
+                            },
+                            onClick = {
+                                selectedProduct = product.id
+                                // Auto-fill price when product is selected
+                                if (price == "0.0" || price == "0") {
+                                    price = "%.2f".format(product.price)
+                                }
+                                productExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Amount and Order Price Row
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Amount (editable)
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { newValue ->
+                        if (newValue.isEmpty() || newValue.toIntOrNull() != null) {
+                            amount = newValue
+                        }
+                    },
+                    label = { Text("Amount *") },
+                    placeholder = { Text("1") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                    isError = amount.isBlank() && amount.isNotEmpty(),
+                    shape = MaterialTheme.shapes.small
+                )
+
+                // Order Price (editable)
+                OutlinedTextField(
+                    value = price,
+                    onValueChange = { newValue ->
+                        if (newValue.isEmpty() || newValue.toDoubleOrNull() != null) {
+                            price = newValue
+                        }
+                    },
+                    label = { Text("Order Price *") },
+                    placeholder = { Text("0.00") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f),
+                    isError = price.isBlank() && price.isNotEmpty(),
+                    shape = MaterialTheme.shapes.small
+                )
+            }
+
+            // Subtotal
+            val subtotal = (amount.toIntOrNull() ?: 0) * (price.toDoubleOrNull() ?: 0.0)
             Surface(
                 color = Color(0xFFF3F4F6),
                 shape = MaterialTheme.shapes.small

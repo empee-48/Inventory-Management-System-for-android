@@ -2,13 +2,10 @@ package com.example.inventory.screens
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.ExitToApp
-import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,7 +43,10 @@ fun MainScreen(
     ordersApiService: OrdersApiService,
     suppliersApiService: SuppliersApiService,
     batchApiService: BatchApiService,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onError: (String) -> Unit = {},
+    onShowMessage: (String) -> Unit = {},
+    onDownloadRequest: (() -> Unit) -> Unit = {} // Add this parameter
 ) {
     var currentTab by remember { mutableStateOf(MainScreenTab.DASHBOARD) }
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -79,16 +79,25 @@ fun MainScreen(
                         tokenManager = tokenManager,
                         userApiService = userApiService,
                         productApiService = productApiService,
-                        categoryApiService = categoryApiService
+                        categoryApiService = categoryApiService,
+                        salesApiService = salesApiService,
+                        ordersApiService = ordersApiService,
+                        suppliersApiService = suppliersApiService,
+                        batchApiService = batchApiService,
+                        onError = onError,
+                        onShowMessage = onShowMessage,
+                        onDownloadRequest = onDownloadRequest // Pass it through
                     )
                     MainScreenTab.PRODUCTS -> ProductsScreen(
                         productApiService = productApiService,
-                        categoryApiService = categoryApiService
+                        categoryApiService = categoryApiService,
+                        salesApiService = salesApiService
                     )
                     MainScreenTab.ORDERS -> OrdersScreen(
                         productApiService = productApiService,
                         orderApiService = ordersApiService,
-                        suppliersApiService = suppliersApiService
+                        suppliersApiService = suppliersApiService,
+                        batchesApiService = batchApiService
                     )
                     MainScreenTab.SALES -> SalesScreen(
                         productApiService = productApiService,

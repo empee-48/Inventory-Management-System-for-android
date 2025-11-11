@@ -12,6 +12,7 @@ public record BatchResponseDto(
         List<SaleItemResponseDto> sales,
         Double stockLeft,
         LocalDate orderDate,
+        Double orderPrice,
         String createdBy,
         String lastModifiedBy,
         LocalDateTime createdAt,

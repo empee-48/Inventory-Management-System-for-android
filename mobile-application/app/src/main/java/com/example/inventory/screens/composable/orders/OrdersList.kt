@@ -1,5 +1,11 @@
 package com.example.inventory.screens.composable.orders
 
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,10 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.inventory.data.OrderResponseDto
 import com.example.inventory.service.api.OrdersApiService
+import com.example.inventory.screens.composable.common.LoadingComponent
+import com.example.inventory.screens.composable.common.LoadingComponentSmall
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun OrdersList(
     orderApiService: OrdersApiService,
@@ -44,6 +53,9 @@ fun OrdersList(
     var orderDate by remember { mutableStateOf("") }
     var minAmount by remember { mutableStateOf("") }
     var maxAmount by remember { mutableStateOf("") }
+
+    // Track if this is the initial load
+    var isInitialLoad by remember { mutableStateOf(true) }
 
     val fetchOrders: (Map<String, Any?>) -> Unit = { filters ->
         coroutineScope.launch {
@@ -78,6 +90,7 @@ fun OrdersList(
                 errorMessage = "Network error: ${e.message}"
             } finally {
                 internalRefreshing = false
+                isInitialLoad = false
             }
         }
     }
@@ -127,8 +140,8 @@ fun OrdersList(
         )
     }
 
-    // Show loading state
-    if (orders == null && errorMessage == null && !isRefreshing && !internalRefreshing) {
+    // Show loading state - FIXED: Check for initial load OR refreshing state
+    if ((isInitialLoad && orders == null) || (internalRefreshing && orders == null)) {
         LoadingState()
         return
     }
@@ -139,6 +152,7 @@ fun OrdersList(
             errorMessage = errorMessage!!,
             onRetry = {
                 errorMessage = null
+                isInitialLoad = true
                 internalRefreshing = true
                 fetchOrders(emptyMap())
             }
@@ -156,12 +170,12 @@ fun OrdersList(
         item {
             ButtonPanel(
                 onRefresh = {
-                    onRefresh()
+                    // FIX: Only set refreshing and call fetchOrders, don't call onRefresh
                     internalRefreshing = true
                     fetchOrders(emptyMap())
                 },
                 onFilter = { showFilterDialog = true },
-                isRefreshing = internalRefreshing || isRefreshing,
+                isRefreshing = internalRefreshing,
                 hasActiveFilters = selectedOrder != null ||
                         categoryIdFilter != null ||
                         orderDate.isNotBlank() ||
@@ -193,19 +207,10 @@ private fun LoadingState() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            CircularProgressIndicator(
-                color = Color(0xFF4A90D6)
-            )
-            Text(
-                text = "Loading orders...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        LoadingComponent(
+            message = "Loading orders...",
+            modifier = Modifier.align(Alignment.Center)
+        )
     }
 }
 
@@ -216,58 +221,134 @@ private fun ButtonPanel(
     isRefreshing: Boolean = false,
     hasActiveFilters: Boolean = false
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 0.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 8.dp
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+        )
     ) {
-        FilledTonalButton(
-            onClick = onRefresh,
-            enabled = !isRefreshing,
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 8.dp)
         ) {
-            if (isRefreshing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Refresh",
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Refresh")
-        }
+            // Filter Button
+            BlueAccentButton(
+                onClick = onFilter,
+                icon = Icons.Default.FilterList,
+                label = "Filter",
+                isActive = hasActiveFilters,
+                modifier = Modifier.weight(1f)
+            )
 
-        FilledTonalButton(
-            onClick = onFilter,
-            modifier = Modifier.weight(1f),
-            colors = if (hasActiveFilters) {
-                ButtonDefaults.filledTonalButtonColors(
-                    containerColor = Color(0xFF4A90D6).copy(alpha = 0.1f),
-                    contentColor = Color(0xFF4A90D6)
-                )
-            } else {
-                ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            // Minimal divider
+            Spacer(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(24.dp)
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
+            )
+
+            // Refresh Button - Clean and minimal
+            Box(
+                modifier = Modifier
+                    .weight(0.7f)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isRefreshing) {
+                    LoadingComponentSmall(
+                        message = "",
+                        size = 16.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    IconButton(
+                        onClick = onRefresh,
+                        modifier = Modifier.size(40.dp),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun BlueAccentButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isActive: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isActive) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 200)
+    )
+
+    val contentColor by animateColorAsState(
+        targetValue = if (isActive) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+        },
+        animationSpec = tween(durationMillis = 200)
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = backgroundColor,
+        tonalElevation = 0.dp
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(vertical = 10.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.FilterList,
-                contentDescription = "Filter",
-                modifier = Modifier.size(18.dp)
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(20.dp),
+                tint = contentColor
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Filter")
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
+                color = contentColor,
+                maxLines = 1
+            )
         }
     }
 }
@@ -413,6 +494,7 @@ private fun FilterDialog(
     )
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun OrderCard(
     order: OrderResponseDto,
@@ -667,6 +749,7 @@ fun ErrorState(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 private fun formatOrderDate(localDate: LocalDate): String {
     val formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
     return localDate.format(formatter)

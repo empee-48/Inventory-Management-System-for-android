@@ -6,10 +6,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Money
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.example.inventory.data.CategoryResponseDto
 import com.example.inventory.data.ProductCreateDto
 import com.example.inventory.data.ProductResponseDto
+import com.example.inventory.screens.composable.common.LoadingComponent
 import com.example.inventory.service.api.CategoryApiService
 import com.example.inventory.service.api.ProductApiService
 import kotlinx.coroutines.launch
@@ -107,7 +111,7 @@ fun EditProductScreen(
                         name = productName,
                         description = description,
                         price = price.toDouble(),
-                        inStock = inStock.toDouble(),
+                        inStock = inStock.toDouble(), // This remains the same but is read-only in UI
                         warningStockLevel = warningStockLevel.toDouble(),
                         unit = unit
                     )
@@ -221,12 +225,7 @@ fun EditProductScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        CircularProgressIndicator()
-                        Text(
-                            text = "Loading categories...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        LoadingComponent(message = "Please Wait...")
                     }
                 }
             } else if (errorMessage != null) {
@@ -316,7 +315,7 @@ fun EditProductScreen(
                     )
 
                     // Category Selection
-                    CategoryDropdown(
+                    SearchableCategoryDropdown(
                         categories = categories,
                         selectedCategory = selectedCategory,
                         onCategorySelected = { selectedCategory = it },
@@ -376,24 +375,25 @@ fun EditProductScreen(
                         enabled = !isSubmitting
                     )
 
-                    // Current Stock
+                    // Current Stock (Read-only)
                     OutlinedTextField(
                         value = inStock,
-                        onValueChange = { newValue ->
-                            if (newValue.isEmpty() || newValue.toDoubleOrNull() != null) {
-                                inStock = newValue
-                            }
-                        },
-                        label = { Text("Current Stock *") },
+                        onValueChange = { }, // No operation - read-only
+                        label = { Text("Current Stock") },
                         placeholder = { Text("0") },
                         leadingIcon = {
-                            Icon(Icons.Default.Inventory2, "Current Stock")
+                            Icon(Icons.Default.Lock, "Current Stock")
+                        },
+                        trailingIcon = {
+                            Icon(Icons.Default.Lock, "Read Only", modifier = Modifier.size(16.dp))
                         },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.fillMaxWidth(),
-                        isError = inStock.isBlank() && inStock.isNotEmpty(),
-                        enabled = !isSubmitting
+                        readOnly = true,
+                        enabled = false,
+                        supportingText = {
+                            Text("Stock levels can only be updated through inventory operations")
+                        }
                     )
 
                     // Warning Stock Level
@@ -449,7 +449,7 @@ fun EditProductScreen(
 
                     // Form Helper Text
                     Text(
-                        text = "* Required fields",
+                        text = "* Required fields\nNote: Current stock cannot be edited directly. Use inventory operations to adjust stock levels.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.Start)

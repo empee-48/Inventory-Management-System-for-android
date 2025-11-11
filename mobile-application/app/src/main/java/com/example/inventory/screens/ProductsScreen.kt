@@ -16,6 +16,7 @@ import com.example.inventory.data.ProductResponseDto
 import com.example.inventory.screens.composable.products.*
 import com.example.inventory.service.api.CategoryApiService
 import com.example.inventory.service.api.ProductApiService
+import com.example.inventory.service.api.SalesApiService
 
 sealed class ProductsScreenState {
     object List : ProductsScreenState()
@@ -30,7 +31,8 @@ sealed class ProductsScreenState {
 @Composable
 fun ProductsScreen(
     productApiService: ProductApiService,
-    categoryApiService: CategoryApiService
+    categoryApiService: CategoryApiService,
+    salesApiService: SalesApiService
 ) {
     var screenState by remember { mutableStateOf<ProductsScreenState>(ProductsScreenState.List) }
     var isRefreshing by remember { mutableStateOf(false) }
@@ -63,7 +65,8 @@ fun ProductsScreen(
                 onDelete = { product: ProductResponseDto ->
                     screenState = ProductsScreenState.List
                 },
-                productApiService = productApiService
+                productApiService = productApiService,
+                salesApiService = salesApiService
             )
         }
         is ProductsScreenState.Add -> {
@@ -139,13 +142,12 @@ fun ProductsListScreen(
             isRefreshing = isRefreshing
         )
 
-        // Modern FAB with your theme color
         FloatingActionButton(
             onClick = onAddProduct,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(24.dp),
-            containerColor = Color(0xFF4A90D6), // Your light blue theme color
+            containerColor = Color(0xFF4A90D6),
             contentColor = Color.White,
             shape = MaterialTheme.shapes.medium
         ) {
